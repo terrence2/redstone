@@ -1,0 +1,13 @@
+/target/
+/dist/
+/node_modules/
+/bindings/target/
+.travis.yml
+**/*.rs.bk
+Cargo.lock
+.pioenvs
+.piolibdeps
+config.js
+
+/target
+**/*.rs.bk
