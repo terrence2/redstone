@@ -31,7 +31,7 @@ module.exports = {
         "no-unreachable": "warn",
         "complexity":     [ "warn", 4  ],
         "max-depth":      [ "warn", 4  ],
-        "max-params":     [ "warn", 4  ],
+        "max-params":     [ "warn", 6  ],
         "max-statements": [ "warn", 30 ],
 
         "no-console": "off",

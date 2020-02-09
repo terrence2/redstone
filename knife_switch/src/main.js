@@ -72,17 +72,52 @@ function read_switch_state() {
   return 'down';
 }
 
-let current_state = read_switch_state();
-console.log('initial switch state: ' + current_state);
+class State {
+  constructor() {
+    this.properties = {
+      position: {
+        value: read_switch_state(),
+        title: 'Position',
+        type: 'string',
+        enum: ['up', 'open', 'down'],
+        readOnly: true,
+        description: 'The switch position'
+      }
+    };
+    this.property_watchers = {};
+  }
+
+  get_property(name) {
+    return this.properties[name].value;
+  }
+
+  set_property(name, value) {
+    this.properties[name].value = value;
+    for (let key in this.property_watchers) {
+      const watch_func = this.property_watchers[key];
+      watch_func(name, value);
+    }
+  }
+
+  watch_properties(watch_name, watch_func) {
+    this.property_watchers[watch_name] = watch_func;
+  }
+
+  unwatch_properties(watch_name) {
+    delete this.property_watchers[watch_name];
+  }
+}
+let state = new State();
+console.log('initial switch state: ' + state.get_property('position'));
 
 function onStateChange(_state, _time, _lastTime) {
   let next_state = read_switch_state();
-  if (next_state == current_state) {
+  if (next_state == state.get_property('position')) {
     return;
   }
-  current_state = next_state;
+  state.set_property('position', next_state);
 
-  console.log('new state: ' + current_state);
+  console.log('new state: ' + next_state);
 }
 
 function onInit() {
@@ -93,7 +128,7 @@ function onInit() {
       setWatch(onStateChange, pin, opts);
     }
 
-    let thing = webthing.start(config.thing);
+    let thing = webthing.start(config.thing, state);
   });
 }
 onInit();
