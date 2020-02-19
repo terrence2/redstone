@@ -1,0 +1,42 @@
+{
+  "name": "redstone",
+  "version": "0.0.1",
+  "description": "A webthings runtime implementation on espruino.",
+  "main": "index.js",
+  "dependencies": {
+    "@babel/polyfill": "^7.8.3"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.8.4",
+    "@babel/core": "^7.8.4",
+    "@babel/preset-env": "^7.8.4",
+    "@rollup/plugin-commonjs": "^11.0.1",
+    "espruino": "^0.1.30",
+    "mocha": "^7.0.1",
+    "rollup": "^1.31.0",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-eslint": "^7.0.0",
+    "rollup-plugin-filesize": "^6.2.1",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-replace": "^2.2.0",
+    "rollup-plugin-sizes": "^1.0.1",
+    "rollup-plugin-uglify": "^6.0.4"
+  },
+  "scripts": {
+    "start": "npm run build && make run",
+    "debug": "npm run build && make debug",
+    "build": "rollup -c",
+    "console": "make console",
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/terrence2/redstone.git"
+  },
+  "author": "Terrence Cole (terrence.d.cole@gmail.com)",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/terrence2/redstone/issues"
+  },
+  "homepage": "https://github.com/terrence2/redstone#readme"
+}
