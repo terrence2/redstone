@@ -15,129 +15,134 @@
 'use strict';
 const ws = require('ws');
 
-function on_thing(req, res, config, state) {
+function make_read_property(self, propname) {
+  return function(req, res) {
+    self.on_read_property(propname, req, res);
+  };
+}
+
+function make_write_property(self, propname) {
+  return function(req, res) {
+    self.on_write_property(propname, req, res);
+  };
+}
+
+function WebThing(config, state) {
+  // Default routes for any thing.
+  let routes = {
+    'GET+/': this.on_thing.bind(this),
+    'GET+/thing': this.on_thing.bind(this),
+    'GET+/thing/properties': this.on_thing_properties.bind(this),
+  };
+
+  // Extend default routes with a route for our properties.
+  for (let propname of state.get_property_names()) {
+    state.set_property_link(propname, 'http://' + config.host + '/thing/properties/' + propname);
+    routes['GET+/thing/properties/' + propname] = make_read_property(this, propname);
+    routes['POST+/thing/properties/' + propname] = make_write_property(this, propname);
+  }
+
+  this.websocket_connections = [];
+  this.routes = routes;
+  this.config = config;
+  this.state = state;
+  this.server = ws.createServer(this.on_request.bind(this));
+
+  this.server.listen(config.port);
+  this.server.on('websocket', this.on_websocket_connection.bind(this));
+  this.state.watch_properties('thing', this.on_property_changed.bind(this));
+}
+
+WebThing.prototype.on_websocket_connection = function(ws) {
+  this.websocket_connections.push(ws);
+  let self = this;
+  ws.on('close', function() {
+    let i = self.websocket_connections.indexOf(ws);
+    if (i != -1) {
+      self.websocket_connections.splice(i, 1);
+    }
+  });
+  ws.on('message', function(msg) {
+    let body = JSON.parse(msg);
+    if (body['messageType'] === 'setProperty') {
+      for (let property in body['data']) {
+        self.state.set_property(property, body['data'][property]);
+      }
+    }
+  });
+};
+
+WebThing.prototype.on_property_changed = function(name, value) {
+  let raw_message = {
+    messageType: 'propertyStatus',
+    data: {}
+  };
+  raw_message.data[name] = value;
+  let message = JSON.stringify(raw_message);
+  for (let i in this.websocket_connections) {
+    this.websocket_connections[i].send(message);
+  }
+};
+
+WebThing.prototype.on_request = function(req, res) {
+  let route_name = req.method + '+' + req.url;
+  let route = this.routes[route_name];
+  if (route) {
+    route(req, res);
+    return;
+  }
+  res.writeHead(404, {'Content-Type': 'text/html'});
+  res.end('<html><head><title>Not Found</title></head><body>Not Found</body></html>');
+};
+
+WebThing.prototype.on_thing = function(_req, res) {
   res.writeHead(200, {'Content-Type': 'application/json'});
   res.end(JSON.stringify({
     '@context': 'https://iot.mozilla.org/schemas/',
-    '@type': [config.name],
-    id: 'http://' + config.host + '/thing',
+    '@type': [this.config.name],
+    id: 'http://' + this.config.host + '/thing',
     title: 'Redstone WebThing',
     description: 'A WebThing implemented on the Redstone platform',
-    properties: state.get_properties(),
+    properties: this.state.get_properties(),
     actions: {},
     events: {},
     links: [
       {
         rel: 'thing',
-        href: 'http://' + config.host + '/thing'
+        href: 'http://' + this.config.host + '/thing'
       },
       {
         rel: 'properties',
-        href: 'http://' + config.host + '/thing/properties'
+        href: 'http://' + this.config.host + '/thing/properties'
       },
       {
         rel: 'alternate',
-        href: 'ws://' + config.host + '/thing'
+        href: 'ws://' + this.config.host + '/thing'
       },
     ]
   }));
 }
 
-function on_thing_properties(req, res, config, state) {
+WebThing.prototype.on_thing_properties = function(_req, res) {
   res.writeHead(200, {'Content-Type': 'application/json'});
-  res.end(JSON.stringify(state));
+  res.end(JSON.stringify({properties: this.state.get_properties()}));
 }
 
-function on_read_property(propname, req, res, config, state) {
-  //console.log('thing: reading property \'' + propname + '\'');
+WebThing.prototype.on_read_property = function(propname, _req, res) {
   res.writeHead(200, {'Content-Type': 'application/json'});
   let out = {};
-  out[propname] = state.get_property(propname);
+  out[propname] = this.state.get_property(propname);
   res.end(JSON.stringify(out));
 }
 
-function on_write_property(propname, req, res, config, state) {
-  if (state.property_is_read_only(propname)) {
+WebThing.prototype.on_write_property = function(propname, req, res) {
+  if (this.state.property_is_read_only(propname)) {
     res.writeHead(403, {'Content-Type': 'text/html'});
     res.end('<html><head><title>Forbidden</title></head><body>Forbidden: read-only</body></html>');
     return;
   }
-  state.set_property(propname, req.read());
-  res.writeHead(200, {'Content-Type': 'application/json'});
-  let out = {};
-  out[propname] = state.get_property(propname);
-  res.end(JSON.stringify(out));
+  this.state.set_property(propname, req.read());
+  return this.on_read_property(propname, req, res);
 }
 
-function make_read_property(propname, config, state) {
-  return function(req, res, config, state) {
-    on_read_property(propname, req, res, config, state);
-  };
-}
-
-function make_write_property(propname, config, state) {
-  return function(req, res, config, state) {
-    on_write_property(propname, req, res, config, state);
-  };
-}
-
-function start_thing(config, state) {
-  let routes = {
-    'GET+/': on_thing,
-    'GET+/thing': on_thing,
-    'GET+/thing/properties': on_thing_properties,
-  };
-  for (let propname of state.get_property_names()) {
-    state.set_property_link(propname, 'http://' + config.host + '/thing/properties/' + propname);
-    routes['GET+/thing/properties/' + propname] = make_read_property(propname, config, state);
-    routes['POST+/thing/properties/' + propname] = make_write_property(propname, config, state);
-  }
-  function on_request(req, res, config, state) {
-    let route_name = req.method + '+' + req.url;
-    let route = routes[route_name];
-    if (route) {
-      route(req, res, config, state);
-      return;
-    }
-    res.writeHead(404, {'Content-Type': 'text/html'});
-    res.end('<html><head><title>Not Found</title></head><body>Not Found</body></html>');
-  }
-
-  let websocket_connections = [];
-  let server = ws.createServer(function (req, res) {
-    on_request(req, res, config, state);
-  });
-  server.listen(config.port);
-  server.on('websocket', function(ws) {
-    websocket_connections.push(ws);
-    ws.on('close', function() {
-      let i = websocket_connections.indexOf(ws);
-      if (i != -1) {
-        websocket_connections.splice(i, 1);
-      }
-    });
-    ws.on('message', function(msg) {
-      let body = JSON.parse(msg);
-      if (body['messageType'] === 'setProperty') {
-        for (let property in body['data']) {
-          state.set_property(property, body['data'][property]);
-        }
-      }
-    });
-  });
-  state.watch_properties('thing', function(name, value) {
-    let raw_message = {
-      messageType: 'propertyStatus',
-      data: {}
-    };
-    raw_message.data[name] = value;
-    let message = JSON.stringify(raw_message);
-    for (let i in websocket_connections) {
-      websocket_connections[i].send(message);
-    }
-  });
-}
-
-module.exports = {
-  start: start_thing,
-};
+module.exports = WebThing;

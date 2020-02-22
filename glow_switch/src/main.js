@@ -16,7 +16,7 @@
 import config from './config.js';
 let espruino = require('../src/hardware/espruino_wifi.js');
 let colorspace = require('../src/util/colorspace.js');
-let webthing = require('../src/webthing.js');
+let WebThing = require('../src/webthing.js');
 
 SPI1.setup({mosi:A7, sck:A5});
 function set_color(r, g, b) {
@@ -151,7 +151,7 @@ State.prototype.unwatch_properties = function(watch_name) {
   delete this._property_watchers[watch_name];
 };
 
-function onButtonPress(pin, state) {
+function onButtonPress(pin, state, thing) {
   const PIN_MAP = {
     A0: 0,
     A1: 1,
@@ -166,6 +166,7 @@ function onButtonPress(pin, state) {
   state.set_property('most_recent_button_press', next_state);
 
   // TODO: emit events too
+  //thing.send_event('button_press', next_state);
 }
 
 let prior_color = '';
@@ -188,17 +189,17 @@ function set_solid_color_interval(state) {
 let thing = null;
 function onConnected() {
   let state = state = new State();
-  thing = webthing.start(config.thing, state);
+  thing = new WebThing(config.thing, state);
 
   const opts = { repeat: true };
   pinMode(A0, 'input_pullup');
-  setWatch(function(_state, _time, _lastTime) { onButtonPress(A0, state); }, A0, opts);
+  setWatch(function(_state, _time, _lastTime) { onButtonPress(A0, state, thing); }, A0, opts);
   pinMode(A1, 'input_pullup');
-  setWatch(function(_state, _time, _lastTime) { onButtonPress(A1, state); }, A1, opts);
+  setWatch(function(_state, _time, _lastTime) { onButtonPress(A1, state, thing); }, A1, opts);
   pinMode(B9, 'input_pullup');
-  setWatch(function(_state, _time, _lastTime) { onButtonPress(B9, state); }, B9, opts);
+  setWatch(function(_state, _time, _lastTime) { onButtonPress(B9, state, thing); }, B9, opts);
   pinMode(B8, 'input_pullup');
-  setWatch(function(_state, _time, _lastTime) { onButtonPress(B8, state); }, B8, opts);
+  setWatch(function(_state, _time, _lastTime) { onButtonPress(B8, state, thing); }, B8, opts);
 
   setInterval(function() {
     let effect = state.get_property('effect');
