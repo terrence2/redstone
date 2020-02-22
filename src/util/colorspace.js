@@ -40,6 +40,9 @@ function parse_html_color(color) {
 // 0 <= s < 1
 // 0 <= l < 1
 function hsl_to_rgb(h, s, l) {
+  // Looks like there's a builtin?!?
+  // E.HSBtoRGB(1, 0, 1, true)
+
   let c = (1 - Math.abs(2 * l - 1)) * s;
   let x = c * (1 - Math.abs((h / 60) % 2 - 1));
 
