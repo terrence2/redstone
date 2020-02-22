@@ -24,7 +24,7 @@ function parse_html_color(color) {
     let b = parseInt(parts[1]) / 255;
     let h = parseInt(parts[2]) * (360 / 65536);
     let s = parseInt(parts[3]) / 255;
-    return hsv_to_rgb(h, s, b);
+    return E.HSBtoRGB(h / 360, s, b, true);
   }
   parts = color.match(rgb_matcher);
   if (parts !== null) {
@@ -36,71 +36,6 @@ function parse_html_color(color) {
   return [0x50, 0x00, 0x50];
 }
 
-// 0 <= h < 360
-// 0 <= s < 1
-// 0 <= l < 1
-function hsl_to_rgb(h, s, l) {
-  // Looks like there's a builtin?!?
-  // E.HSBtoRGB(1, 0, 1, true)
-
-  let c = (1 - Math.abs(2 * l - 1)) * s;
-  let x = c * (1 - Math.abs((h / 60) % 2 - 1));
-
-  let rgb = [0, 0, 0];
-  if (h < 60) {
-    rgb = [c, x, 0];
-  } else if (h < 120) {
-    rgb = [x, c, 0];
-  } else if (h < 180) {
-    rgb = [0, c, x];
-  } else if (h < 240) {
-    rgb = [0, x, c];
-  } else if (h < 300) {
-    rgb = [x, 0, c];
-  } else {
-    rgb = [c, 0, x];
-  }
-
-  let m = (l - c / 2);
-  return [
-    Math.round((rgb[0] + m) * 255),
-    Math.round((rgb[1] + m) * 255),
-    Math.round((rgb[2] + m) * 255)
-  ];
-}
-
-// 0 <= h < 360
-// 0 <= s < 1
-// 0 <= v < 1
-function hsv_to_rgb(h, s, v) {
-  let c = v * s;
-  let x = c * (1 - Math.abs((h / 60) % 2 - 1));
-
-  let rgb = [0, 0, 0];
-  if (h < 60) {
-    rgb = [c, x, 0];
-  } else if (h < 120) {
-    rgb = [x, c, 0];
-  } else if (h < 180) {
-    rgb = [0, c, x];
-  } else if (h < 240) {
-    rgb = [0, x, c];
-  } else if (h < 300) {
-    rgb = [x, 0, c];
-  } else {
-    rgb = [c, 0, x];
-  }
-
-  let m = v - c;
-  return [
-    Math.round((rgb[0] + m) * 255),
-    Math.round((rgb[1] + m) * 255),
-    Math.round((rgb[2] + m) * 255)
-  ];
-}
-
 module.exports = {
   parse_html: parse_html_color,
-  hsl_to_rgb: hsl_to_rgb,
-  hsv_to_rgb: hsv_to_rgb
 };

@@ -165,7 +165,7 @@ function onButtonPress(pin, state, thing) {
   }
   state.set_property('most_recent_button_press', next_state);
 
-  // TODO: emit events too
+  // Emit events too?
   //thing.send_event('button_press', next_state);
 }
 
