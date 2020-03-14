@@ -1,6 +1,6 @@
 /target/
-/dist/
-/node_modules/
+dist/
+node_modules/
 /bindings/target/
 .travis.yml
 **/*.rs.bk
