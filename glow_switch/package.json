@@ -1,5 +1,5 @@
 {
-  "name": "redstone",
+  "name": "glow_switch",
   "version": "0.0.1",
   "description": "A webthings runtime implementation on espruino.",
   "main": "index.js",

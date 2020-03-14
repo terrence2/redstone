@@ -17,6 +17,8 @@ import config from './config.js';
 let espruino = require('../src/hardware/espruino_wifi.js');
 let colorspace = require('../src/util/colorspace.js');
 let WebThing = require('../src/webthing.js');
+//import WebThing from './webthing/webthing.js';
+//let WebThingState = require('../src/state.js');
 
 const REPEAT_TIMEOUT = 15;
 const DEBOUNCE_TIMEOUT = 30;
@@ -31,80 +33,80 @@ function set_color(r, g, b) {
   SPI1.write(buffer);
 }
 
-function State() {
-  this._properties = {
-    most_recent_button_press: {
-      value: 0,
-      title: 'MostRecentButtonPress',
-      type: 'integer',
-      readOnly: true,
-      description: 'The most recently pressed button'
-    },
-    color: {
-      value: 'none',
-      title: 'Color',
-      type: 'string',
-      readOnly: false,
-      description: 'The color to set the LEDs'
-    },
-    effect: {
-      value: 'solid',
-      title: 'EffectStyle',
-      type: 'string',
-      enum: ['solid', 'wave'],
-      readOnly: false,
-      description: 'The effect style with which to drive the LEDs'
-    },
-    temperature: {
-      value: E.getTemperature(),
-      title: 'Temperature',
-      type: 'number',
-      readOnly: true,
-      description: 'The value of the onboard temperature sensor'
+/**
+ * A state object for communication with the webthings runtime.
+ * 
+ * Note: subclassing does not work in espruino, so this class is
+ *       intended to be used directly. Users will generally want to
+ *       call createProperty before passing the state to WebThing.
+ */
+class WebThingState {
+  constructor() {
+    this._properties = {};
+    this._property_watchers = {};
+  }
+
+  create_property({
+    name,
+    type,
+    initial_value,
+    title,
+    description,
+    read_only = true,
+    enumerants = null
+  }) {
+    this._properties[name] = {
+      value: initial_value,
+      title: title,
+      type: type,
+      readOnly: read_only,
+      description: description
+    };
+    if (enumerants != null) {
+      this._properties[name]['enum'] = enumerants;
     }
-  };
-  this._property_watchers = {};
+  }
+
+  get_properties() {
+    return this._properties;
+  }
+
+  get_property_names() {
+    let a = [];
+    for (let propname in this._properties) {
+      a.push(propname);
+    }
+    return a;
+  }
+
+  property_is_read_only(name) {
+    return this._properties[name].readOnly || false;
+  }
+
+  get_property(name) {
+    return this._properties[name].value;
+  }
+
+  set_property(name, value) {
+    this._properties[name].value = value;
+    for (let watch_name in this._property_watchers) {
+      const watch_func = this._property_watchers[watch_name];
+      watch_func(name, value);
+    }
+  }
+
+  set_property_link(name, href) {
+    this._properties[name]['links'] = [{'rel': 'property', 'href': href}];
+  }
+
+  watch_properties(watch_name, watch_func) {
+    this._property_watchers[watch_name] = watch_func;
+  }
+
+  unwatch_properties(watch_name) {
+    delete this._property_watchers[watch_name];
+  }
 }
-
-State.prototype.get_properties = function() {
-  return this._properties;
-};
-
-State.prototype.get_property_names = function() {
-  let a = [];
-  for (let propname in this._properties) {
-    a.push(propname);
-  }
-  return a;
-};
-
-State.prototype.property_is_read_only = function(name) {
-  return self._properties[name].readOnly || false;
-};
-
-State.prototype.get_property = function(name) {
-  return this._properties[name].value;
-};
-
-State.prototype.set_property = function(name, value) {
-  this._properties[name].value = value;
-  for (let watch_name in this._property_watchers) {
-    const watch_func = this._property_watchers[watch_name];
-    watch_func(name, value);
-  }
-};
-
-State.prototype.set_property_link = function(name, href) {
-  this._properties[name]['links'] = [{'rel': 'property', 'href': href}];
-};
-
-State.prototype.watch_properties = function(watch_name, watch_func) {
-  this._property_watchers[watch_name] = watch_func;
-};
-
-State.prototype.unwatch_properties = function(watch_name) {
-  delete this._property_watchers[watch_name];
-};
 
 const PIN_MAP = {
   A0: 0,
@@ -269,7 +271,38 @@ function set_flame_color_interval(state) {
 
 let thing = null;
 function onConnected() {
-  let state = state = new State();
+  let state = state = new WebThingState();
+  state.create_property({
+    name: 'most_recent_button_press',
+    type: 'integer',
+    initial_value: 0,
+    title: 'MostRecentButtonPress',
+    description: 'The most recently pressed button'
+  });
+  state.create_property({
+    name: 'color',
+    type: 'string',
+    initial_value: 'none',
+    title: 'Color',
+    description: 'The color to set the LEDs',
+    read_only: false
+  });
+  state.create_property({
+    name: 'effect',
+    type: 'string',
+    enumerants: ['solid', 'wave'],
+    initial_value: 'solid',
+    title: 'EffectStyle',
+    description: 'The effect style with which to drive the LEDs',
+    read_only: false
+  });
+  state.create_property({
+    name: 'temperature',
+    initial_value: E.getTemperature(),
+    title: 'Temperature',
+    type: 'number',
+    description: 'The value of the onboard temperature sensor'
+  });
   thing = new WebThing(config.thing, state);
   // state.set_property('color', 'rgb(128, 64, 0)');
   // state.set_property('effect', 'swirl');
