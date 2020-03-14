@@ -1,4 +1,3 @@
-
 // This file is part of Redstone.
 //
 // Redstone is free software: you can redistribute it and/or modify

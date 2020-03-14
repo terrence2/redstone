@@ -16,7 +16,7 @@
 
 /**
  * A state object for communication with the webthings runtime.
- * 
+ *
  * Note: subclassing does not work in espruino, so this class is
  *       intended to be used directly. Users will generally want to
  *       call createProperty before passing the state to WebThing.

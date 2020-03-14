@@ -42,7 +42,9 @@ export default {
   },
   plugins: [
     eslint({throwOnError: true,}),
-    commonjs({ignore: ['Wifi', 'ws']}),
+    commonjs({
+      ignore: ['Wifi', 'ws', 'crypto', 'net', 'http']
+    }),
     resolve({
       jsnext: true,
       main: true,
